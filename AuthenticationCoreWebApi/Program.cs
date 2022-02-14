@@ -1,43 +1,92 @@
+
+using AuthenticationCoreWebApi.Models;
+using AuthenticationCoreWebApi.Services;
+
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-var app = builder.Build();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSingleton<IBookService,BookService>();
+builder.Services.AddSingleton<IUserService,UserService>();
 
-// Configure the HTTP request pipeline.
+
+var app = builder.Build(); 
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
+app.MapPost("/create",(Book book, IBookService service)=>Create(book,service));
+app.MapGet("/get", (int id, IBookService service) => Get(id, service));
+app.MapGet("/getAll", (IBookService service) => GetAll(service));
+app.MapPut("/update", (Book book, IBookService service) => Update(book, service));
+app.MapDelete("/delete", (int id, IBookService service) => Delete(id, service));
+
+
+
+IResult Create(Book book, IBookService service)
+{
+    return Results.Ok(service.Create(book));
+}
+IResult GetAll(IBookService service)
+{
+    var books = service.GetAll();
+    if (books.Count > 0)
+    {
+        return Results.Ok(books);
+
+    }
+    else
+    {
+        return Results.NoContent();
+
+
+    }
+}
+IResult Get(int id, IBookService service)
+{
+    var book = service.Get(id);
+    if (book != null)
+    {
+        return Results.Ok(book);
+    }
+    return Results.NotFound();
+}
+IResult Delete(int id, IBookService service)
+{
+    var result = service.Delete(id);
+    if (result)
+    {
+        return Results.Ok(true);
+    }
+    else
+    {
+        return Results.BadRequest();
+    }
+
+}
+IResult Update(Book book, IBookService service)
+{
+    var result = service.Update(book);
+    if (result != null)
+    {
+        return Results.Ok(result);
+    }
+    else
+    {
+        return Results.BadRequest();
+    }
+}
+
+
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-       new WeatherForecast
-       (
-           DateTime.Now.AddDays(index),
-           Random.Shared.Next(-20, 55),
-           summaries[Random.Shared.Next(summaries.Length)]
-       ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
 
 app.Run();
-
-internal record WeatherForecast(DateTime Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
